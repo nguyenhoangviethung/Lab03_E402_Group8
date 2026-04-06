@@ -8,7 +8,7 @@
 
 ## I. Technical Contribution (15 Points)
 
-Là thành viên phụ trách database và viết tool, test tool, tôi đã đóng góp vào việc thiết kế và implement cơ sở dữ liệu giả lập cho thư viện, cũng như viết và test các tool.
+Là thành viên phụ trách database và viết tool, test tool, tôi đã đóng góp vào việc thiết kế và implement cơ sở dữ liệu giả lập cho thư viện, cũng như viết và test các tool. Đã commit ở branch "duchung"
 
 - **Modules Implementated**: `src/tools/tools.py` (các tool như get_popular_books, get_user_ledger), phần database mock, test tool. 
 - **Code Highlights**: 
