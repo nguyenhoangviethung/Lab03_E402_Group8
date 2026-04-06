@@ -1,6 +1,6 @@
 import json
 import re
-from src.logs.logger import system_logger, AgentTracer
+from src.telemetry.logger import system_logger, AgentTracer
 from src.tools.tools import TOOLS
 
 SYSTEM_PROMPT = """
