@@ -1,0 +1,141 @@
+
+======================================================================
+COMPREHENSIVE TEST CASES FOR LIBRARY CHATBOT
+======================================================================
+
+
+[TC1] SỐ LƯỢNG SÁCH ĐƯỢC MƯỢN NHIỀU NHẤT
+----------------------------------------------------------------------
+🔹 User query: 'Sách nào được mượn nhiều nhất ở thư viện?'
+🔹 Function: get_popular_books()
+
+✅ Response:
+   1. Advanced Serverless - 8 lần mượn
+   2. MLOps: Theory and Practice Vol. 8 - 8 lần mượn
+   3. Observability Essentials - 7 lần mượn
+   ... và 7 cuốn khác
+
+✅ Status: PASS
+
+[TC2] KIỂM TRA TRẠNG THÁI MỘT CUỐN SÁCH
+----------------------------------------------------------------------
+🔹 Test 2a - Sách có sẵn:
+   User query: 'Tôi muốn mượn cuốn "MLOps: Theory and Practice", có còn không?'
+   Function: search_book_status('MLOps: Theory and Practice')
+
+✅ Response: Cuốn 'MLOps: Theory and Practice' hiện đang CÓ SẴN (8/10 cuốn).
+
+✅ Status: PASS
+
+🔹 Test 2b - Sách đã hết:
+   User query: 'Cuốn "The Silent Harbor" còn có không?'
+   Function: search_book_status('The Silent Harbor')
+
+✅ Response: Cuốn 'The Silent Harbor: Theory and Practice' hiện ĐÃ HẾT (Đang cho mượn 2/2 cuốn).
+
+✅ Status: PASS
+
+🔹 Test 2c - Sách không tồn tại:
+   User query: 'Có sách "Truyện Kiếm Hiệp Vô Địch" không?'
+   Function: search_book_status('Truyện Kiếm Hiệp Vô Địch')
+
+✅ Response: Không tìm thấy thông tin về cuốn sách 'Truyện Kiếm Hiệp Vô Địch' trong thư viện.
+
+✅ Status: PASS
+
+[TC3] KIỂM TRA TRẠNG THÁI NGƯỜI DÙNG (SÁCH ĐANG MƯỢN)
+----------------------------------------------------------------------
+🔹 Test 3a - User có sách mượn:
+   User query: 'Tôi là sinh viên STU00061. Tôi đang mượn bao nhiêu cuốn sách?'
+   Function: get_user_ledger({'user_id': 'STU00061'})
+
+✅ Response:
+   User ID: STU00061
+   Số sách đang mượn: 2
+   - Computer Vision in Action
+   - Advanced Maritime Trade
+   Tiền phạt: 0 VNĐ
+
+✅ Status: PASS
+
+🔹 Test 3b - User không có sách mượn:
+   User query: 'Tôi là STU00099. Tôi đang mượn gì?'
+   Function: get_user_ledger({'user_id': 'STU00099'})
+
+✅ Response:
+   User ID: STU00099
+   Số sách đang mượn: 0
+   Tiền phạt: 0 VNĐ
+
+✅ Status: PASS
+
+[TC4] GIỚI THIỆU NỘI DUNG SÁCH
+----------------------------------------------------------------------
+🔹 Test 4a - Sách có trong thư viện:
+   User query: 'Hãy giới thiệu sơ qua nội dung sách "MLOps"?'
+   Function: get_book_content('MLOps')
+
+✅ Response:
+   Nội dung tóm tắt của 'MLOps: Theory and Practice': 
+   This book explains MLOps through simple explanations, case studies, and 
+   real-world scenarios for modern learners.
+
+✅ Status: PASS
+
+🔹 Test 4b - Sách không tồn tại:
+   User query: 'Cuốn "Sử Thi Kiếm Khách" viết về cái gì?'
+   Function: get_book_content('Sử Thi Kiếm Khách')
+
+✅ Response:
+   Không tìm thấy dữ liệu nội dung cho sách 'Sử Thi Kiếm Khách'.
+
+✅ Status: PASS
+
+[TC5] THỐNG KÊ SÁCH CỦA MỘT TÁC GIẢ
+----------------------------------------------------------------------
+🔹 Test 5a - Tác giả có sách trong thư viện:
+   User query: 'Tác giả "Nam Clark" có bao nhiêu cuốn sách?'
+   Function: filter_by_author('Nam Clark')
+
+✅ Response:
+   Tác giả 'Nam Clark' có 1 đầu sách. Bao gồm: MLOps: Theory and Practice.
+
+✅ Status: PASS
+
+🔹 Test 5b - Tác giả không có sách trong thư viện:
+   User query: 'Tác giả "Nguyễn Nhật Ánh" có sách không?'
+   Function: filter_by_author('Nguyễn Nhật Ánh')
+
+✅ Response:
+   Thư viện hiện không có cuốn sách nào của tác giả 'Nguyễn Nhật Ánh'.
+
+✅ Status: PASS
+
+[TC6] OUT OF DOMAIN - QUERY NGOÀI LĐ THƯ VIỆN
+----------------------------------------------------------------------
+🔹 User query: 'Thời tiết hôm nay ở Hà Nội sao?'
+🔹 Function: Không có hàm phù hợp
+
+⚠️  Response: [SYSTEM] Tôi chỉ có thể trợ giúp về:
+   - Sách được mượn nhiều nhất
+   - Trạng thái của sách
+   - Trạng thái mượn sách của bạn
+   - Nội dung sách
+   - Tác giả có sách nào
+   
+   Vui lòng hỏi về thư viện!
+
+✅ Status: PASS (Xử lý gracefully)
+
+======================================================================
+TEST SUMMARY
+======================================================================
+✅ TC1: get_popular_books() - PASS
+✅ TC2: search_book_status() - PASS (3 scenarios)
+✅ TC3: get_user_ledger() - PASS (2 scenarios)
+✅ TC4: get_book_content() - PASS (2 scenarios)
+✅ TC5: filter_by_author() - PASS (2 scenarios)
+✅ TC6: Out of Domain - PASS
+
+🎉 ALL TESTS PASSED!
+======================================================================

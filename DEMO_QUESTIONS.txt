@@ -1,0 +1,238 @@
+================================================================================
+DANH SÁCH CÂU HỎI TEST DEMO - LIBRARY CHATBOT
+================================================================================
+
+Copy-paste các câu hỏi dưới đây vào chatbot để test từng TC!
+
+================================================================================
+TC1: SÁCH ĐƯỢC MƯỢN NHIỀU NHẤT
+================================================================================
+
+📌 Câu hỏi test:
+   "Sách nào được mượn nhiều nhất ở thư viện?"
+
+Hoặc:
+   "Cho tôi xem top sách nổi tiếp nhất"
+   "Những cuốn sách được yêu thích nhất là những cuốn nào?"
+
+Expected: 
+   - Trả về danh sách 10 cuốn sách được mượn nhiều nhất
+   - Format: {"title": "...", "borrows": N}
+
+
+================================================================================
+TC2: KIỂM TRA TRẠNG THÁI SÁCH
+================================================================================
+
+📌 Test 2a - Sách CÓ SẴN:
+   "Tôi muốn mượn cuốn 'Computer Vision in Action', có còn không?"
+   
+   Hoặc:
+   "Cuốn 'MLOps: Theory and Practice' còn trên kệ không?"
+   "Có sách 'The System Reliability Handbook' không?"
+   
+   Expected: "Cuốn '...' hiện đang CÓ SẴN (X/Y cuốn)."
+
+📌 Test 2b - Sách ĐÃ HẾT:
+   "Tôi muốn mượn 'The Secure Coding Handbook', có còn không?"
+   
+   Hoặc:
+   "Cuốn 'The Motivation Handbook' còn có không?"
+   "Java Essentials' còn hay đã hết?"
+   
+   Expected: "Cuốn '...' hiện ĐÃ HẾT (Đang cho mượn X/X cuốn)."
+
+📌 Test 2c - Sách KHÔNG TỒN TẠI:
+   "Có sách 'Harry Potter' không?"
+   
+   Hoặc:
+   "Thư viện có cuốn 'Sử Thi Kiếm Khách' không?"
+   "Tìm cuốn 'Đắc Nhân Tâm' trong thư viện"
+   
+   Expected: "Không tìm thấy thông tin về cuốn sách '...' trong thư viện."
+
+
+================================================================================
+TC3: KIỂM TRA TRẠNG THÁI MỰC CÁ NHÂN
+================================================================================
+
+📌 Test 3a - Sinh viên CÓ SÁCH MƯỢN:
+   "Tôi là STU00061, tôi đang mượn bao nhiêu cuốn sách?"
+   
+   Hoặc:
+   "Xem danh sách sách của tôi (STU00061)"
+   "STU00061 đang mượn cái gì?"
+   
+   Expected: 
+   {
+     "user_id": "STU00061",
+     "borrowed": ["Computer Vision in Action", "Advanced Maritime Trade"],
+     "fine": 0
+   }
+
+📌 Test 3b - Sinh viên KHÔNG CÓ SÁCH MƯỢN:
+   "Tôi là STU00001, tôi đang mượn gì?"
+   
+   Hoặc:
+   "Kiểm tra sách của STU00099"
+   "STU00100 có mượn gì không?"
+   
+   Expected: 
+   {
+     "user_id": "STU00001",
+     "borrowed": [],
+     "fine": 0
+   }
+
+📌 Test 3c - Sinh viên KHÔNG TỒN TẠI:
+   "Tôi là STU99999, tôi đang mượn sách gì?"
+   
+   Expected:
+   {
+     "user_id": "STU99999",
+     "borrowed": [],
+     "fine": 0
+   }
+
+
+================================================================================
+TC4: GIỚI THIỆU NỘI DUNG SÁCH
+================================================================================
+
+📌 Test 4a - Sách TỒN TẠI:
+   "Hãy giới thiệu sơ qua nội dung sách 'MLOps: Theory and Practice'"
+   
+   Hoặc:
+   "Nội dung của cuốn 'Advanced MLOps' là gì?"
+   "Cho tôi biết về sách 'Modern Data Analysis'"
+   "Cuốn 'The Silent Harbor' viết về cái gì?"
+   
+   Expected: 
+   "Nội dung tóm tắt của '...': [Description từ books.csv]"
+
+📌 Test 4b - Sách KHÔNG TỒN TẠI:
+   "Sách 'Sử Thi Kiếm Khách' viết về cái gì?"
+   
+   Hoặc:
+   "Giới thiệu về sách 'Harry Potter'"
+   "Nội dung sách 'Lập Trình C++' là gì?"
+   
+   Expected:
+   "Không tìm thấy dữ liệu nội dung cho sách '...'"
+
+
+================================================================================
+TC5: THỐNG KÊ SÁCH CỦA TÁC GIẢ
+================================================================================
+
+📌 Test 5a - TÁC GIẢ CÓ SÁCH:
+   "Tác giả 'Nam Clark' có bao nhiêu cuốn sách trong thư viện?"
+   
+   Hoặc:
+   "Những cuốn sách của 'Khanh Taylor' là gì?"
+   "Tác giả 'Ivy Do' có bnh đầu sách?"
+   "Liệt kê sách của tác giả 'Ryan Lee'"
+   
+   Expected:
+   "Tác giả '...' có X đầu sách. Bao gồm: [danh sách sách]"
+
+📌 Test 5b - TÁC GIẢ KHÔNG CÓ SÁCH:
+   "Tác giả 'Nguyễn Nhật Ánh' có sách nào trong thư viện không?"
+   
+   Hoặc:
+   "Tìm sách của tác giả 'Trần Hữu Phước'"
+   "Thư viện có sách của 'J.K. Rowling' không?"
+   
+   Expected:
+   "Thư viện hiện không có cuốn sách nào của tác giả '...'"
+
+
+================================================================================
+TC6: OUT OF DOMAIN - QUERY NGOÀI LĨNH VỰC
+================================================================================
+
+📌 Test 6a - QUERY VỀ THỜI TIẾT:
+   "Thời tiết hôm nay ở Hà Nội sao?"
+   
+   Expected: [System message] Tôi chỉ có thể trợ giúp về thư viện...
+
+📌 Test 6b - QUERY VỀ TIN TỨC:
+   "Tin tức hôm nay có gì mới?"
+   
+   Expected: [System message] Tôi chỉ có thể trợ giúp về thư viện...
+
+📌 Test 6c - QUERY VỀ TOÁN HỌC:
+   "2 + 2 bằng mấy?"
+   
+   Expected: [System message] Tôi chỉ có thể trợ giúp về thư viện...
+
+📌 Test 6d - QUERY VỀ Y TẾ:
+   "Tôi bị cảm lạnh phải làm sao?"
+   
+   Expected: [System message] Tôi chỉ có thể trợ giúp về thư viện...
+
+
+================================================================================
+DEMO SCENARIO - LUỒNG TỰ NHIÊN
+================================================================================
+
+👤 Người dùng (Sinh viên STU00061):
+
+1️⃣ "Xin chào, sách nào được mượn nhiều nhất hiện nay?"
+   → Gọi TC1: get_popular_books()
+
+2️⃣ "Tôi muốn mượn 'Computer Vision in Action', có còn không?"
+   → Gọi TC2: search_book_status("Computer Vision in Action")
+
+3️⃣ "Sách của tôi (STU00061) hiện như thế nào?"
+   → Gọi TC3: get_user_ledger({"user_id": "STU00061"})
+
+4️⃣ "Hãy cho tôi biết về cuốn 'MLOps' vậy"
+   → Gọi TC4: get_book_content("MLOps")
+
+5️⃣ "Tác giả 'Khanh Taylor' có những cuốn sách nào?"
+   → Gọi TC5: filter_by_author("Khanh Taylor")
+
+6️⃣ "Hôm nay thời tiết thế nào?"
+   → TC6: Out of domain → System message
+
+
+================================================================================
+🎯 QUY TRÌNH TEST TỰ ĐỘNG
+================================================================================
+
+1. Khởi động chatbot:
+   cd c:\Users\hoang\Documents\Day-3-Lab-Chatbot-vs-react-agent
+   python main.py
+
+2. Copy-paste các câu hỏi trên vào chatbot
+
+3. Kiểm tra:
+   ✓ Response trả về đúng định dạng
+   ✓ Dữ liệu từ file CSV được load đúng
+   ✓ Xử lý lỗi gracefully
+   ✓ Không có exception
+
+
+================================================================================
+💡 GỢI Ý TEST THÊM
+================================================================================
+
+📌 Edge cases:
+   - "comp" (partial match cho Computer Vision)
+   - "mloops" (typo - case insensitive)
+   - "nam" (partial match cho Nam Clark)
+   - STU00001 (user tồn tại nhưng không có sách mượn)
+   - STU00999 (user không tồn tại)
+
+📌 Spam:
+   - Câu hỏi rất dài
+   - Ký tự đặc biệt: @#$%
+   - Ngôn ngữ khác: "你好" (tiếng Trung)
+
+📌 Performance:
+   - Nhiều query liên tiếp
+   - Large dataset queries
+
+
+================================================================================
