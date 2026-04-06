@@ -31,7 +31,7 @@ def main():
     
     provider = GeminiProvider(model_name="gemma-3-27b-it") 
     
-    user_query = "Thư viện có bao nhiêu cuốn sách của Nguyễn Nhật Ánh vậy?"
+    user_query = "MLOps: Theory and Practice Vol. 8 còn bao nhiêu cuốn?"
     
     print(f"[Người dùng]: {user_query}")
     
