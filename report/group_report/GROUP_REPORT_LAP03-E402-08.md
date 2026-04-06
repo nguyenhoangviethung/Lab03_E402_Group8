@@ -205,39 +205,29 @@ Trong lần chạy test mới nhất (2026-04-06), không có lỗi nào xảy r
 - Cần cache cho câu hỏi lặp lại.
 
 ---
+### 7 Phân tích Benchmark Tổng Quan
 
-## 7. So sánh Chatbot và ReAct Agent
+* **Độ trễ (Latency):**
+    * **Baseline:** Nhanh, trung bình từ **1.4s đến 8.2s**. Do chỉ thực hiện 1 single-pass inference (sinh text 1 lần duy nhất).
+    * **ReAct Agent:** Chậm hơn đáng kể, dao động từ **2.0s đến 12.9s**. Trung bình mỗi truy vấn cần 2 steps (vòng lặp) để hoàn thành.
+* **Tiêu thụ Token (Cost/Efficiency):**
+    * **Baseline:** Tiêu thụ cực ít token (ví dụ: Input 45 / Output 58).
+    * **ReAct Agent:** Tiêu thụ Token khổng lồ do đặc thù phải nối chuỗi toàn bộ Lịch sử + Observation để gửi lại trong mỗi vòng lặp. Điển hình, một câu hỏi tiêu tốn **~800 đến 1400 tokens Input**.
+* **Lỗi Vượt Giới Hạn (Max Iteration Reached):**
+    * Ghi nhận 1 trường hợp Agent bị lặp vô hạn (Step = 5) ở câu hỏi nhiễu loạn: *"2+2= MẤY"*. Agent cố gắng xử lý mất **12.9s** và tốn **2618 Tokens** trước khi bị ngắt.
+# Bảng So Sánh Chi Tiết (Trích xuất từ kết quả Benchmark)
 
-### 7.1 Chatbot đơn giản (Không dùng tool)
-
-**Cách hoạt động**:
-```python
-class SimpleChatbot:
-    def __init__(self, provider):
-        self.provider = provider
-    
-    def chat(self, user_query):
-        # Chỉ gọi LLM một lần, không có tools
-        response = self.provider.generate(user_query)
-        return response
-```
-
-**Đặc điểm**:
-- ✅ Nhanh: 1 lần gọi LLM → 1 trả lời.
-- ✅ Đơn giản: không cần xử lý công cụ.
-- ❌ Hạn chế: không thể truy cập dữ liệu thời gian thực.
-- ❌ Không giải quyết được truy vấn nhiều bước.
-
-### 7.2 So sánh thực tế
-
-| Chỉ số | Chatbot | Agent | Người chiến thắng |
-| :--- | :--- | :--- | :--- |
-| Câu hỏi đơn | 1 vòng, 2.8s | 1 vòng, 2.8s | Cân bằng |
-| Câu hỏi cần tool | ❌ Hallucinate | ✅ 2 vòng, 5.7s | Agent |
-| Trường hợp lỗi | ❌ Fail ngay | ✅ Không có lỗi trong test | Agent |
-| Thời gian trung bình | ~2.8s | ~5-12s | Chatbot |
-| Độ chính xác | ~40% | ~100% | Agent |
-| Dùng tool | N/A | 100% | Agent |
+| Phân Loại Testcase | Truy Vấn | Baseline | ReAct Agent | Phân tích hành vi Agent |
+| :--- | :--- | :--- | :--- | :--- |
+| **Hỏi Thông Tin Sách (TC1)** | *Sách nào mượn nhiều nhất?* | ~8.2s (Thành công) | ~4.7s (2 bước) | Agent gọi đúng `Get_Popular_Books`. Baseline xử lý chậm bất thường. |
+| **Tra Cứu Tồn Kho (TC2)** | *Muốn mượn 'Computer Vision in Action'* | ~1.4s (Thành công) | ~4.6s (2 bước) | Agent gọi đúng `Search_Book_Status`. Baseline trả lời nhanh nhưng dựa trên ảo giác. |
+| **Hỏi Sách Ảo (TC2_Negative)** | *Có sách 'Harry Potter' không?* | ~2.1s (Thành công) | ~4.3s (2 bước) | Agent dùng `Search_Book_Status` để xác minh, Baseline rất dễ bị Hallucination ở đây. |
+| |
+**Tra Thông Tin User (TC3)** | *Tôi là STU00061, mượn bao nhiêu cuốn?* | ~2.0s (Thành công) | ~4.7s (2 bước) | Agent gọi đúng `Get_User_Ledger`. Baseline trả lời chung chung. |
+| **Tóm Tắt Khó (TC4_Negative)**| *'Sử Thi Kiếm Khách' viết về cái gì?* | ~4.9s (Thành công) | **~9.8s (3 bước)** | Agent mất thời gian hơn. Nó thử gọi `Get_Book_Content`, không có, sau đó thử `Search_Book_Status` trước khi kết luận. |
+| **Ngoài Luồng (TC6_Weather)**| *Thời tiết hôm nay ở Hà Nội sao?* | ~2.0s (Thành công) | ~3.0s (**1 bước**) | **Agent Rất Thông Minh**: Nhận ra không cần dùng Tool, trả lời ngay trong 1 step (không tốn thêm token). |
+| **Nhiễu Loạn (TC6_Math)** | *2+2= MẤY* | ~0.9s (Thành công) | **Lỗi Max Iter (12.9s)** | Lỗi Edge Case: Cú pháp "MẤY" có thể làm bộ parse JSON bị nhiễu, khiến Agent loay hoay 5 vòng. 
+---
 
 #### Test 1: Câu hỏi đơn giản
 ```
