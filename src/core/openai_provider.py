@@ -1,56 +1,41 @@
-import time
-from typing import Dict, Any, Optional, Generator
+import os
 from openai import OpenAI
-from src.core.llm_provider import LLMProvider
+from src.telemetry.logger import system_logger
 
-class OpenAIProvider(LLMProvider):
-    def __init__(self, model_name: str = "gpt-4o", api_key: Optional[str] = None):
-        super().__init__(model_name, api_key)
-        self.client = OpenAI(api_key=self.api_key)
+class OpenAIProvider:
+    def __init__(self, model_name="gpt-4o-mini"):
+        """
+        Khởi tạo OpenAI Provider. 
+        Yêu cầu có biến môi trường OPENAI_API_KEY trong file .env
+        """
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("Không tìm thấy OPENAI_API_KEY. Hãy kiểm tra file .env!")
+            
+        self.client = OpenAI(api_key=api_key)
+        self.model_name = model_name
 
-    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
-        start_time = time.time()
-        
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+    def generate(self, chat_history):
+        """
+        Gửi lịch sử hội thoại lên OpenAI và nhận text trả về.
+        """
+        # Chuẩn hóa lại format: Đảm bảo content luôn là string
+        formatted_messages = []
+        for msg in chat_history:
+            formatted_messages.append({
+                "role": msg["role"],
+                "content": str(msg["content"])  # Ép kiểu an toàn thành chuỗi
+            })
 
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-        )
-
-        end_time = time.time()
-        latency_ms = int((end_time - start_time) * 1000)
-
-        # Extraction from OpenAI response
-        content = response.choices[0].message.content
-        usage = {
-            "prompt_tokens": response.usage.prompt_tokens,
-            "completion_tokens": response.usage.completion_tokens,
-            "total_tokens": response.usage.total_tokens
-        }
-
-        return {
-            "content": content,
-            "usage": usage,
-            "latency_ms": latency_ms,
-            "provider": "openai"
-        }
-
-    def stream(self, prompt: str, system_prompt: Optional[str] = None) -> Generator[str, None, None]:
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
-        stream = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            stream=True
-        )
-
-        for chunk in stream:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+        try:
+            system_logger.debug(f"Đang gọi mô hình {self.model_name}...")
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=formatted_messages,
+                temperature=0.1 # Nhiệt độ thấp giúp Agent suy luận Logic hơn
+            )
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            system_logger.error(f"Lỗi khi gọi OpenAI API: {str(e)}", exc_info=True)
+            raise e

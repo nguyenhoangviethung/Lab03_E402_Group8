@@ -1,17 +1,17 @@
 import streamlit as st
-import time
 import os
 from dotenv import load_dotenv
-from src.core.gemini_provider import GeminiProvider
+
+# Đã thay đổi Import sang OpenAI
+from src.core.openai_provider import OpenAIProvider
 from src.agent.agent import ReActLibraryAgent
+from src.telemetry.metrics import ComparisonDashboard
 
 # Nạp biến môi trường
 load_dotenv()
 
-# Cấu hình trang
 st.set_page_config(page_title="Smart Library Agent", page_icon="📚", layout="wide")
 
-# CSS tối giản, chuyên nghiệp — tương thích cả Light và Dark mode
 st.markdown("""
 <style>
     .title-gradient {
@@ -39,34 +39,28 @@ st.markdown('<p class="title-gradient">📚 Smart Library: Agent vs Baseline</p>
 st.caption("So sánh chất lượng và tốc độ giữa ReAct Agent (có Tool) và LLM thuần (không Tool).")
 st.divider()
 
-# ── Khởi tạo Provider + Agent (cache để không re-init mỗi lần render) ──────────
+# Khởi tạo Dashboard lưu JSON
+dashboard = ComparisonDashboard()
+
 @st.cache_resource
 def load_agent():
-    provider = GeminiProvider(model_name=os.getenv("DEFAULT_MODEL", "gemma-3-27b-it"))
+    # Sử dụng OpenAI Provider
+    provider = OpenAIProvider(model_name=os.getenv("DEFAULT_MODEL", "gpt-4o-mini"))
     agent = ReActLibraryAgent(provider=provider, max_iter=5)
     return agent
 
 try:
     agent = load_agent()
-    provider_ok = True
 except Exception as e:
-    st.error(f"❌ Không thể khởi tạo kết nối Gemini: {e}")
-    provider_ok = False
+    st.error(f"❌ Không thể khởi tạo kết nối OpenAI: {e}")
     st.stop()
 
-# ── Session state ──────────────────────────────────────────────────────────────
 if "agent_messages" not in st.session_state:
-    st.session_state.agent_messages = [
-        {"role": "assistant", "content": "Xin chào! Tôi là trợ lý thư viện AI. Tôi có thể tra cứu sách, kiểm tra tình trạng mượn/trả và nhiều hơn nữa. Bạn cần hỗ trợ gì?"}
-    ]
+    st.session_state.agent_messages = [{"role": "assistant", "content": "Xin chào! Tôi có thể tra cứu sách và kiểm tra tình trạng mượn trả."}]
 if "baseline_messages" not in st.session_state:
-    st.session_state.baseline_messages = [
-        {"role": "assistant", "content": "Xin chào! Tôi là LLM cơ bản, trả lời dựa trên kiến thức huấn luyện — không có khả năng tra cứu dữ liệu thư viện thực tế."}
-    ]
+    st.session_state.baseline_messages = [{"role": "assistant", "content": "Xin chào! Tôi là LLM cơ bản, không có khả năng gọi tool."}]
 
-# ── 2 TABS ─────────────────────────────────────────────────────────────────────
 tab1, tab2 = st.tabs(["🚀 Agent Framework (ReAct)", "🐢 Baseline (Direct LLM)"])
-
 
 # ═══════════════════════════ TAB 1: AGENT ═════════════════════════════════════
 with tab1:
@@ -74,36 +68,33 @@ with tab1:
         with st.chat_message(msg["role"], avatar="🧑‍💻" if msg["role"] == "user" else "🤖"):
             st.markdown(msg["content"])
             if "latency" in msg:
-                st.markdown(f'<div class="latency-badge">⏱️ {msg["latency"]:.2f}s</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="latency-badge">⏱️ {msg["latency"]}s | Thao tác: {msg.get("steps", 0)} bước</div>', unsafe_allow_html=True)
 
-    if prompt := st.chat_input("Hỏi AI Agent (VD: Sách nào mượn nhiều nhất?)", key="agent_chat"):
+    if prompt := st.chat_input("Hỏi AI Agent...", key="agent_chat"):
         st.session_state.agent_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar="🧑‍💻"):
             st.markdown(prompt)
 
         with st.chat_message("assistant", avatar="🤖"):
-            start_time = time.time()
-            with st.spinner(""):
-                # Chạy toàn bộ vòng lặp ReAct — ẩn hoàn toàn, chỉ trả kết quả cuối
-                try:
-                    # Reset lịch sử để agent tươi mỗi lần hỏi mới
-                    agent.chat_history = [agent.chat_history[0]]  # Giữ lại System Prompt
-                    response = agent.run_agent(prompt)
-                except Exception as e:
-                    response = f"Lỗi hệ thống: {e}"
-
-            end_time = time.time()
-            latency = end_time - start_time
+            with st.spinner("Đang suy luận và gọi Tool..."):
+                agent.chat_history = [agent.chat_history[0]] 
+                
+                # Unpack tuple trả về từ run_agent
+                response, metrics = agent.run_agent(prompt)
+                
+                # Lưu vào file JSON
+                dashboard.add_metric(metrics)
+                dashboard.save_to_file()
 
             st.markdown(response)
-            st.markdown(f'<div class="latency-badge">⏱️ {latency:.2f}s</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="latency-badge">⏱️ {metrics.latency}s | Thao tác: {metrics.total_steps} bước</div>', unsafe_allow_html=True)
 
             st.session_state.agent_messages.append({
                 "role": "assistant",
                 "content": response,
-                "latency": latency
+                "latency": metrics.latency,
+                "steps": metrics.total_steps
             })
-
 
 # ═══════════════════════════ TAB 2: BASELINE ══════════════════════════════════
 with tab2:
@@ -111,7 +102,7 @@ with tab2:
         with st.chat_message(msg["role"], avatar="🧑‍💻" if msg["role"] == "user" else "💬"):
             st.markdown(msg["content"])
             if "latency" in msg:
-                st.markdown(f'<div class="latency-badge">⏱️ {msg["latency"]:.2f}s</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="latency-badge">⏱️ {msg["latency"]}s</div>', unsafe_allow_html=True)
 
     if prompt := st.chat_input("Hỏi LLM thông thường...", key="baseline_chat"):
         st.session_state.baseline_messages.append({"role": "user", "content": prompt})
@@ -119,21 +110,18 @@ with tab2:
             st.markdown(prompt)
 
         with st.chat_message("assistant", avatar="💬"):
-            start_time = time.time()
-            with st.spinner(""):
-                try:
-                    response = agent.run_baseline(prompt)
-                except Exception as e:
-                    response = f"Lỗi hệ thống: {e}"
-
-            end_time = time.time()
-            latency = end_time - start_time
+            with st.spinner("Đang trả lời..."):
+                # Unpack tuple trả về từ run_baseline
+                response, metrics = agent.run_baseline(prompt)
+                
+                dashboard.add_metric(metrics)
+                dashboard.save_to_file()
 
             st.markdown(response)
-            st.markdown(f'<div class="latency-badge">⏱️ {latency:.2f}s</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="latency-badge">⏱️ {metrics.latency}s</div>', unsafe_allow_html=True)
 
             st.session_state.baseline_messages.append({
                 "role": "assistant",
                 "content": response,
-                "latency": latency
+                "latency": metrics.latency
             })
