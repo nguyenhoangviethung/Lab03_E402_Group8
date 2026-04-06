@@ -3,19 +3,13 @@ import pandas as pd
 import os
 from src.telemetry.logger import log_function_call
 
-# =====================================================================
-# --- CẤU HÌNH ĐƯỜNG DẪN DỮ LIỆU ---
-# =====================================================================
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 BOOKS_PATH = os.path.join(BASE_DIR, 'db', 'library_mock_data', 'books.csv')
 FLAT_PATH = os.path.join(
     BASE_DIR, 'db', 'library_mock_data', 'library_chatbot_flat.csv')
 BORROWINGS_PATH = os.path.join(
     BASE_DIR, 'db', 'library_mock_data', 'borrowings.csv')
-
-# =====================================================================
-# --- HÀM HỖ TRỢ (UTILITIES) ---
-# =====================================================================
 
 @log_function_call
 def parse_input(input_data) -> str:
@@ -28,9 +22,6 @@ def parse_input(input_data) -> str:
         return str(next(iter(input_data.values())))
     return str(input_data)
 
-# =====================================================================
-# --- DANH SÁCH CÁC CÔNG CỤ (TOOLS) ---
-# =====================================================================
 
 @log_function_call
 def get_popular_books(args) -> str:
@@ -149,10 +140,6 @@ def filter_by_author(author_name) -> str:
 
     except Exception as e:
         return f"System Error: Lỗi lọc theo tác giả - {str(e)}"
-
-# =====================================================================
-# --- REGISTRY: ĐĂNG KÝ CÔNG CỤ CHO AGENT ---
-# =====================================================================
 
 
 TOOLS = {
