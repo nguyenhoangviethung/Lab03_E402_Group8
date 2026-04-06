@@ -2,6 +2,7 @@ import json
 import re
 from src.logs.logger import system_logger, AgentTracer
 from src.tools.tools import TOOLS
+from src.telemetry.logger import log_function_call
 
 SYSTEM_PROMPT = """
 Bạn là một ReAct Agent quản lý thư viện thông minh. Chức năng của bạn là tư vấn, tra cứu thông tin sách và người dùng.
@@ -35,6 +36,7 @@ class ReActLibraryAgent:
         # Khởi tạo ngữ cảnh với System Prompt
         self.chat_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
+    @log_function_call
     def parse_llm_output(self, text): #call api openai
         """
         Trích xuất tên Tool và tham số JSON từ câu trả lời của LLM.
@@ -62,6 +64,7 @@ class ReActLibraryAgent:
             
         return action_name, action_input
 
+    @log_function_call
     def execute_tool(self, action_name, action_input):
         """
         Thực thi Tool một cách an toàn và trả về Observation.
@@ -87,6 +90,7 @@ class ReActLibraryAgent:
             system_logger.error(f"Lỗi khi chạy Tool {action_name}: {str(e)}", exc_info=True)
             return json.dumps({"error": f"Lỗi nội bộ khi chạy tool: {str(e)}"})
 
+    @log_function_call
     def run(self, user_query):
         """
         Hàm chính chạy vòng lặp ReAct xử lý câu hỏi của user.
