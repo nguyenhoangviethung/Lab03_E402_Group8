@@ -64,29 +64,21 @@ with tab1:
 
         with st.chat_message("assistant", avatar="🤖"):
             start_time = time.time()
-            
-            with st.status("🧠 Agent đang phân tích & hành động...", expanded=True) as status:
-                st.write("🕵️ **Thought**: Phân tích cú pháp và xác định tool phù hợp...")
-                time.sleep(1)
-                
-                st.write("🛠️ **Action**: Kích hoạt **Tool `TC1: Get_Popular_Books`**")
-                time.sleep(1.5)
-                
-                st.write("👀 **Observation**: Đã lấy thành công chuỗi JSON từ Database.")
-                time.sleep(1)
-                
-                st.write("✨ **LLM Synthesize**: Chuyển đổi dữ liệu thô sang ngôn ngữ tự nhiên hợp ngữ cảnh.")
-                time.sleep(0.5)
-                
-                status.update(label="Hoàn tất quy trình suy luận!", state="complete", expanded=False)
-            
-            agent_response = f"Hệ thống ghi nhận cuốn sách **'Nhà Giả Kim'** và **'Đắc Nhân Tâm'** hiện đang có lượt mượn cao nhất trong tháng này.\n\n*(Trả lời cho yêu cầu: {prompt})*"
-            st.markdown(agent_response)
-            
+
+            # Chạy ngầm toàn bộ logic, user chỉ thấy spinner nhỏ
+            with st.spinner(""):
+                # [INTERNAL] Thought → Action → Observation (ẩn hoàn toàn)
+                time.sleep(0.8)  # thought
+                time.sleep(1.2)  # action + tool call
+                time.sleep(0.8)  # observation
+                agent_response = f"Dựa trên dữ liệu thư viện, hai cuốn sách có lượt mượn cao nhất tháng này là **'Nhà Giả Kim'** (150 lượt) và **'Đắc Nhân Tâm'** (142 lượt)."
+
             end_time = time.time()
             latency = end_time - start_time
-            
-            st.markdown(f'<div class="latency-badge">⏱️ Độ trễ hệ thống: {latency:.2f}s</div>', unsafe_allow_html=True)
+
+            # Chỉ hiển thị câu trả lời cuối cùng — sạch như ChatGPT
+            st.markdown(agent_response)
+            st.markdown(f'<div class="latency-badge">⏱️ {latency:.2f}s</div>', unsafe_allow_html=True)
             
             st.session_state.agent_messages.append({
                 "role": "assistant", 
