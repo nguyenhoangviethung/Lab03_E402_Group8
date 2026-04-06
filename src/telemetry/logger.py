@@ -4,6 +4,7 @@ import os
 import uuid
 from datetime import datetime
 import time
+import functools  
 
 # ---------------- 1. CẤU HÌNH SYSTEM LOGGER ----------------
 def setup_system_logger():
@@ -12,14 +13,11 @@ def setup_system_logger():
     logger = logging.getLogger("LibraryReActSystem")
     logger.setLevel(logging.DEBUG)
     
-    # Format log text dễ đọc cho con người
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s')
     
-    # Ghi ra file
     file_handler = logging.FileHandler('logs/system_app.log', encoding='utf-8')
     file_handler.setFormatter(formatter)
     
-    # In ra console
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     
@@ -31,18 +29,16 @@ def setup_system_logger():
 
 system_logger = setup_system_logger()
 
-# ---------------- 2. CẤU HÌNH AGENT TRACER ----------------
 class AgentTracer:
     """Class dùng để trackback toàn bộ quá trình suy luận của Agent cho 1 request"""
     def __init__(self, user_query):
-        self.session_id = str(uuid.uuid4()) # Tạo ID duy nhất cho mỗi câu hỏi
+        self.session_id = str(uuid.uuid4())
         self.user_query = user_query
         self.start_time = time.time()
-        self.steps = [] # Lưu danh sách các bước (Thought, Action, v.v.)
-        self.status = "running" # running, success, failed
+        self.steps = [] 
+        self.status = "running" 
         self.final_answer = None
         
-        # Tạo thư mục chứa file trace JSON
         os.makedirs('logs/traces', exist_ok=True)
         self.trace_file = f"logs/traces/trace_{self.session_id}.json"
 
@@ -55,7 +51,6 @@ class AgentTracer:
             "parsed_action": action_name,
             "parsed_input": action_input,
             "observation": observation,
-            # "prompt_tokens": prompt_tokens # Nếu bạn muốn track cả chi phí
         }
         self.steps.append(step_data)
 
@@ -76,8 +71,33 @@ class AgentTracer:
             "trace_steps": self.steps
         }
         
-        # Dump toàn bộ trackback ra file JSON
         with open(self.trace_file, 'w', encoding='utf-8') as f:
             json.dump(trace_data, f, ensure_ascii=False, indent=4)
         
         system_logger.info(f"Đã lưu trace cho session {self.session_id} tại {self.trace_file}")
+
+def log_function_call(func):
+    """
+    Decorator tự động ghi log thông tin mỗi khi một function (Tool) được gọi.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        func_name = func.__name__
+        
+        system_logger.info(f"[TOOL START] Bắt đầu gọi '{func_name}' | Args: {args} | Kwargs: {kwargs}")
+        
+        try:
+            result = func(*args, **kwargs)
+            
+            execution_time = time.time() - start_time
+            system_logger.info(f"[TOOL SUCCESS] '{func_name}' hoàn thành trong {execution_time:.4f}s | Result: {result}")
+            
+            return result
+            
+        except Exception as e:
+            execution_time = time.time() - start_time
+            system_logger.error(f"[TOOL ERROR] '{func_name}' thất bại sau {execution_time:.4f}s | Lỗi: {str(e)}", exc_info=True)
+            raise e 
+            
+    return wrapper

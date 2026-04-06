@@ -1,61 +1,74 @@
+from src.core.openai_provider import OpenAIProvider
+from src.agent.agent import ReActLibraryAgent
 import os
 from dotenv import load_dotenv
 
+# Nạp biến môi trường từ file .env
 load_dotenv()
 
-from src.core.gemini_provider import GeminiProvider 
-from src.agent.agent import ReActLibraryAgent
 
-def run_baseline_chatbot(provider, query):
-    """
-    Chạy Chatbot Baseline: Chỉ dùng kiến thức nền (Weights của LLM), 
-    không có Tool, không tra cứu Internet hay Database.
-    """
-    baseline_system_prompt = """Bạn là một nhân viên thư viện. 
-Bạn hãy cố gắng trả lời câu hỏi của người dùng một cách tự nhiên.
-Tuy nhiên, bạn KHÔNG ĐƯỢC dùng bất kỳ công cụ (tool) hay API nào, cũng không được truy cập Internet.
-Hãy trả lời trực tiếp dựa trên kiến thức hiện có của bạn."""
-    
-    chat_history = [
-        {"role": "system", "content": baseline_system_prompt},
-        {"role": "user", "content": query}
-    ]
-    
-    try:
-        return provider.generate(chat_history)
-    except Exception as e:
-        return f"Lỗi Baseline: {str(e)}"
+# Lớp Adapter để chuyển đổi kết quả từ Dict (của OpenAIProvider) sang String (cho Agent)
+
+
+class OpenAIAdapter(OpenAIProvider):
+    def generate(self, chat_history):
+        # OpenAIProvider gốc trả về Dict, chúng ta chỉ lấy phần 'content' là String
+        response_dict = super().generate(
+            prompt=chat_history[-1]['content'],
+            system_prompt=chat_history[0]['content'] if chat_history[0]['role'] == 'system' else None
+        )
+        # Nếu Agent của bạn truyền vào full chat_history, dùng logic này:
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=chat_history,
+            temperature=0.1
+        )
+        return response.choices[0].message.content
+
 
 def main():
-    print("So sánh")
-    
-    provider = GeminiProvider(model_name="gemma-3-27b-it") 
-    
-    user_query = "Thư viện có bao nhiêu cuốn sách của Nguyễn Nhật Ánh vậy?"
-    
-    print(f"[Người dùng]: {user_query}")
-    
-    # ---------------------------------------------------------
-    # 1. CHẠY LUỒNG BASELINE
-    # ---------------------------------------------------------
-    print("\n" + "="*60)
-    print("[PHẦN 1: BASELINE CHATBOT] (LLM Thuần túy - Không Tools)")
-    print("="*60)
-    print("Đang hỏi Gemma 3 trực tiếp...")
-    baseline_response = run_baseline_chatbot(provider, user_query)
-    print(f"[Kết quả Baseline]:\n{baseline_response}")
-    
-    # ---------------------------------------------------------
-    # 2. CHẠY LUỒNG REACT AGENT
-    # ---------------------------------------------------------
-    print("\n" + "="*60)
-    print("[PHẦN 2: REACT AGENT] (Được trang bị 5 Tools thư viện)")
-    print("="*60)
-    print("Agent đang suy luận (kiểm tra terminal hoặc file log để xem các bước Thought/Action)...")
-    
+    print("=== HỆ THỐNG QUẢN LÝ THƯ VIỆN (OPENAI VERSION) ===")
+
+    # 1. Kiểm tra API Key
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("LỖI: Bạn chưa cấu hình OPENAI_API_KEY trong file .env")
+        return
+
+    # 2. Khởi tạo Provider (dùng Adapter để không phải sửa file gốc)
+    provider = OpenAIAdapter(model_name="gpt-4o", api_key=api_key)
+
+    # 3. Khởi tạo Agent
     agent = ReActLibraryAgent(provider=provider, max_iter=5)
-    agent_response = agent.run(user_query)
+
+    # user_query = "Thư viện có bao nhiêu cuốn sách của Nguyễn Nhật Ánh vậy?"
+    user_query = "Thư viện có bao nhiêu cuốn sách của Emma Le?"
+
+    print(f"[Người dùng]: {user_query}")
+
+    # ---------------------------------------------------------
+    # PHẦN 1: RUN BASELINE (Gọi trực tiếp qua phương thức mới của Agent)
+    # ---------------------------------------------------------
+    print("\n" + "="*60)
+    print("[PHẦN 1: BASELINE CHATBOT] (Kiến thức thuần LLM)")
+    print("="*60)
+
+    # Gọi hàm run_baseline bạn vừa tách trong class ReActLibraryAgent
+    baseline_response = agent.run_baseline(user_query)
+    print(f"[Kết quả Baseline]:\n{baseline_response}")
+
+    # ---------------------------------------------------------
+    # PHẦN 2: RUN AGENT (Chạy vòng lặp ReAct)
+    # ---------------------------------------------------------
+    print("\n" + "="*60)
+    print("[PHẦN 2: REACT AGENT] (LLM + Công cụ thư viện)")
+    print("="*60)
+    print("Agent đang suy luận...")
+
+    # Gọi hàm run_agent bạn vừa tách trong class ReActLibraryAgent
+    agent_response = agent.run_agent(user_query)
     print(f"\n[Kết quả ReAct Agent]:\n{agent_response}")
+
 
 if __name__ == "__main__":
     main()
