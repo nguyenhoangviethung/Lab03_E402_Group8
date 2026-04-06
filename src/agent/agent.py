@@ -1,74 +1,147 @@
-import os
+import json
 import re
-from typing import List, Dict, Any, Optional
-from src.core.llm_provider import LLMProvider
-from src.telemetry.logger import logger
+from src.logs.logger import system_logger, AgentTracer
+from src.tools.tools import TOOLS
 
-class ReActAgent:
-    """
-    SKELETON: A ReAct-style Agent that follows the Thought-Action-Observation loop.
-    Students should implement the core loop logic and tool execution.
-    """
-    
-    def __init__(self, llm: LLMProvider, tools: List[Dict[str, Any]], max_steps: int = 5):
-        self.llm = llm
-        self.tools = tools
-        self.max_steps = max_steps
-        self.history = []
+SYSTEM_PROMPT = """
+Bạn là một ReAct Agent quản lý thư viện thông minh. Chức năng của bạn là tư vấn, tra cứu thông tin sách và người dùng.
+Bạn có quyền truy cập vào các công cụ (tools) sau:
 
-    def get_system_prompt(self) -> str:
-        """
-        TODO: Implement the system prompt that instructs the agent to follow ReAct.
-        Should include:
-        1.  Available tools and their descriptions.
-        2.  Format instructions: Thought, Action, Observation.
-        """
-        tool_descriptions = "\n".join([f"- {t['name']}: {t['description']}" for t in self.tools])
-        return f"""
-        You are an intelligent assistant. You have access to the following tools:
-        {tool_descriptions}
+1. Get_Popular_Books(): Không cần tham số. Trả về danh sách sách phổ biến.
+2. Search_Book_Status(title: str): Kiểm tra trạng thái và số lượng tồn kho của sách.
+3. Get_User_Ledger(user_id: str): Kiểm tra lịch sử mượn trả và tiền phạt của người dùng.
+4. Get_Book_Content(title: str): Lấy tóm tắt nội dung của một cuốn sách.
+5. Filter_By_Author(author: str): Tìm các cuốn sách của một tác giả cụ thể.
 
-        Use the following format:
-        Thought: your line of reasoning.
-        Action: tool_name(arguments)
-        Observation: result of the tool call.
-        ... (repeat Thought/Action/Observation if needed)
-        Final Answer: your final response.
-        """
+ĐỊNH DẠNG BẮT BUỘC KHI PHẢN HỒI (Luôn dùng tiếng Việt):
+Thought: Suy nghĩ của bạn về việc cần làm tiếp theo dựa trên thông tin hiện có.
+Action: Tên công cụ cần gọi (chỉ một trong các tên ở trên, hoặc để trống nếu không cần).
+Action Input: Tham số truyền vào công cụ dưới dạng JSON hợp lệ. Ví dụ: {"title": "Sapiens"}
 
-    def run(self, user_input: str) -> str:
+Khi bạn đã có đủ thông tin để trả lời câu hỏi của người dùng, hãy dùng định dạng sau để kết thúc:
+Thought: Tôi đã có đủ thông tin để trả lời.
+Final Answer: [Câu trả lời hoàn chỉnh và thân thiện dành cho người dùng]
+"""
+
+class ReActLibraryAgent:
+    def __init__(self, provider, max_iter=5):
         """
-        TODO: Implement the ReAct loop logic.
-        1. Generate Thought + Action.
-        2. Parse Action and execute Tool.
-        3. Append Observation to prompt and repeat until Final Answer.
+        Khởi tạo ReAct Agent.
+        :param provider: LLM Provider instance (có hàm generate(messages))
+        :param max_iter: Số vòng lặp tối đa để tránh infinite loop
         """
-        logger.log_event("AGENT_START", {"input": user_input, "model": self.llm.model_name})
+        self.provider = provider
+        self.max_iter = max_iter
+        # Khởi tạo ngữ cảnh với System Prompt
+        self.chat_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    def parse_llm_output(self, text): #call api openai
+        """
+        Trích xuất tên Tool và tham số JSON từ câu trả lời của LLM.
+        """
+        # Dùng Regex để tìm Action và Action Input
+        action_match = re.search(r"Action:\s*([^\n]+)", text)
+        action_input_match = re.search(r"Action Input:\s*(.*)", text, re.DOTALL)
         
-        current_prompt = user_input
-        steps = 0
+        action_name = action_match.group(1).strip() if action_match else None
+        
+        # Xử lý chuỗi JSON của Action Input
+        action_input_str = "{}"
+        if action_input_match:
+            # Lấy phần text có thể chứa JSON, loại bỏ các ký tự thừa
+            raw_input = action_input_match.group(1).strip()
+            # Xóa bỏ các backticks markdown (vd: ```json ... ```) nếu LLM sinh ra
+            raw_input = re.sub(r"^```json|```$", "", raw_input, flags=re.MULTILINE).strip()
+            action_input_str = raw_input if raw_input else "{}"
+        
+        try:
+            action_input = json.loads(action_input_str)
+        except json.JSONDecodeError as e:
+            system_logger.warning(f"Lỗi Parse JSON từ LLM: {action_input_str}. Chi tiết: {str(e)}")
+            action_input = None # Đánh dấu lỗi để nhắc LLM sửa
+            
+        return action_name, action_input
 
-        while steps < self.max_steps:
-            # TODO: Generate LLM response
-            # result = self.llm.generate(current_prompt, system_prompt=self.get_system_prompt())
+    def execute_tool(self, action_name, action_input):
+        """
+        Thực thi Tool một cách an toàn và trả về Observation.
+        """
+        if not action_name or action_name.lower() == "none":
+            return json.dumps({"error": "Không tìm thấy Action hợp lệ. Hãy kiểm tra lại format hoặc dùng 'Final Answer'."})
             
-            # TODO: Parse Thought/Action from result
+        if action_input is None:
+            return json.dumps({
+                "error": "Action Input không phải là chuỗi JSON hợp lệ. Hãy sửa lại cú pháp (đảm bảo dùng ngoặc kép cho key/value).",
+                "instruction": "Hãy thử gọi lại Tool với JSON chuẩn."
+            })
             
-            # TODO: If Action found -> Call tool -> Append Observation
+        if action_name not in TOOLS:
+            return json.dumps({"error": f"Tool '{action_name}' không tồn tại. Chỉ sử dụng các tool được liệt kê trong System Prompt."})
             
-            # TODO: If Final Answer found -> Break loop
-            
-            steps += 1
-            
-        logger.log_event("AGENT_END", {"steps": steps})
-        return "Not implemented. Fill in the TODOs!"
+        try:
+            # Gọi hàm tool tương ứng
+            system_logger.debug(f"Đang thực thi Tool: {action_name} với input: {action_input}")
+            result = TOOLS[action_name](action_input)
+            return result
+        except Exception as e:
+            system_logger.error(f"Lỗi khi chạy Tool {action_name}: {str(e)}", exc_info=True)
+            return json.dumps({"error": f"Lỗi nội bộ khi chạy tool: {str(e)}"})
 
-    def _execute_tool(self, tool_name: str, args: str) -> str:
+    def run(self, user_query):
         """
-        Helper method to execute tools by name.
+        Hàm chính chạy vòng lặp ReAct xử lý câu hỏi của user.
         """
-        for tool in self.tools:
-            if tool['name'] == tool_name:
-                # TODO: Implement dynamic function calling or simple if/else
-                return f"Result of {tool_name}"
-        return f"Tool {tool_name} not found."
+        system_logger.info(f"Nhận request mới: '{user_query}'")
+        
+        # Khởi tạo Tracer để ghi log trackback cho request này
+        tracer = AgentTracer(user_query)
+        self.chat_history.append({"role": "user", "content": user_query})
+
+        try:
+            for step in range(1, self.max_iter + 1):
+                system_logger.debug(f"--- Bắt đầu vòng lặp thứ {step}/{self.max_iter} ---")
+                
+                # 1. Gọi LLM Provider để sinh bước tiếp theo
+                llm_response = self.provider.generate(self.chat_history) 
+                self.chat_history.append({"role": "assistant", "content": llm_response})
+
+                # 2. Kiểm tra điều kiện thoát (Đã có Final Answer)
+                if "Final Answer:" in llm_response:
+                    final_answer = llm_response.split("Final Answer:")[-1].strip()
+                    system_logger.info("Đã tìm thấy câu trả lời cuối cùng.")
+                    tracer.finish(final_answer=final_answer)
+                    return final_answer
+
+                # 3. Phân tích Action từ output của LLM
+                action_name, action_input = self.parse_llm_output(llm_response)
+
+                # 4. Thực thi Tool và nhận Observation
+                observation = self.execute_tool(action_name, action_input)
+
+                # 5. Ghi trackback cho vòng lặp hiện tại vào JSON
+                tracer.add_step(
+                    iteration=step,
+                    prompt_tokens=0, # Cập nhật nếu provider của bạn hỗ trợ trả về token usage
+                    llm_response=llm_response,
+                    action_name=action_name,
+                    action_input=action_input,
+                    observation=observation
+                )
+
+                # 6. Cập nhật Observation vào ngữ cảnh để LLM đọc ở vòng lặp sau
+                obs_msg = f"Observation: {observation}"
+                self.chat_history.append({"role": "user", "content": obs_msg})
+                system_logger.debug(f"Observation thu được: {observation}")
+
+            # Nếu chạy hết vòng lặp for mà không có Final Answer -> Fallback
+            warning_msg = "Agent vượt quá số vòng lặp tối đa (MAX_ITER)."
+            system_logger.warning(warning_msg)
+            tracer.finish(error="Vượt quá MAX_ITER. Agent có thể đã bị kẹt trong vòng lặp vô hạn.")
+            return "Hệ thống bận hoặc không thể xử lý yêu cầu phức tạp này, vui lòng thử lại sau. (Lỗi: Vượt quá giới hạn suy luận)"
+
+        except Exception as e:
+            # Bắt lỗi toàn cục (Code sập, mất kết nối API, v.v.)
+            error_msg = f"Lỗi nghiêm trọng trong quá trình chạy Agent: {str(e)}"
+            system_logger.error(error_msg, exc_info=True)
+            tracer.finish(error=str(e))
+            return "Đã xảy ra lỗi hệ thống nghiêm trọng. Vui lòng liên hệ quản trị viên."
