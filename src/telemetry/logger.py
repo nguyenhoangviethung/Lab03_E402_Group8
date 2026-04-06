@@ -4,6 +4,7 @@ import os
 import uuid
 from datetime import datetime
 import time
+import functools  
 
 # ---------------- 1. CẤU HÌNH SYSTEM LOGGER ----------------
 def setup_system_logger():
@@ -75,9 +76,39 @@ class AgentTracer:
             "total_iterations": len(self.steps),
             "trace_steps": self.steps
         }
-        
-        # Dump toàn bộ trackback ra file JSON
+# Dump toàn bộ trackback ra file JSON
         with open(self.trace_file, 'w', encoding='utf-8') as f:
             json.dump(trace_data, f, ensure_ascii=False, indent=4)
         
         system_logger.info(f"Đã lưu trace cho session {self.session_id} tại {self.trace_file}")
+
+# ---------------- 3. DECORATOR LOG FUNCTION CALL ----------------
+def log_function_call(func):
+    """
+    Decorator tự động ghi log thông tin mỗi khi một function (Tool) được gọi.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        func_name = func.__name__
+        
+        # Ghi log TRƯỚC khi hàm chạy (rất hữu ích để debug nếu hàm bị treo)
+        system_logger.info(f"[TOOL START] Bắt đầu gọi '{func_name}' | Args: {args} | Kwargs: {kwargs}")
+        
+        try:
+            # Thực thi hàm gốc
+            result = func(*args, **kwargs)
+            
+            # Ghi log SAU khi hàm chạy thành công
+            execution_time = time.time() - start_time
+            system_logger.info(f"[TOOL SUCCESS] '{func_name}' hoàn thành trong {execution_time:.4f}s | Result: {result}")
+            
+            return result
+            
+        except Exception as e:
+            # Ghi log nếu hàm văng lỗi
+            execution_time = time.time() - start_time
+            system_logger.error(f"[TOOL ERROR] '{func_name}' thất bại sau {execution_time:.4f}s | Lỗi: {str(e)}", exc_info=True)
+            raise e # Ném lỗi ra ngoài để Agent tự xử lý (Self-Correction)
+            
+    return wrapper

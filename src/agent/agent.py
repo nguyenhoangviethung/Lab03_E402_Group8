@@ -1,6 +1,6 @@
 import json
 import re
-from src.telemetry.logger import system_logger, AgentTracer
+from src.telemetry.logger import system_logger, AgentTracer, log_function_call
 from src.tools.tools import TOOLS
 
 SYSTEM_PROMPT = """
@@ -36,6 +36,7 @@ class ReActLibraryAgent:
         # Khởi tạo ngữ cảnh với System Prompt
         self.chat_history = [{"role": "system", "content": SYSTEM_PROMPT}]
 
+    @log_function_call
     def parse_llm_output(self, text):
         """
         Trích xuất tên Tool và tham số JSON từ câu trả lời của LLM thông qua LLM provider (OpenAI).
@@ -104,7 +105,7 @@ class ReActLibraryAgent:
                 action_input = None
 
             return action_name, action_input
-
+    @log_function_call
     def execute_tool(self, action_name, action_input):
         """
         Thực thi Tool một cách an toàn và trả về Observation.
@@ -131,7 +132,7 @@ class ReActLibraryAgent:
             system_logger.error(
                 f"Lỗi khi chạy Tool {action_name}: {str(e)}", exc_info=True)
             return json.dumps({"error": f"Lỗi nội bộ khi chạy tool: {str(e)}"})
-
+    @log_function_call
     def run_baseline(self, user_query):
         """
         Chạy luồng Baseline: Gọi model trực tiếp và trả về kết quả ngay lập tức.
@@ -151,7 +152,7 @@ class ReActLibraryAgent:
         except Exception as e:
             system_logger.error(f"Lỗi Baseline: {str(e)}")
             return "Xin lỗi, tôi không thể xử lý yêu cầu lúc này."
-
+    @log_function_call
     def run_agent(self, user_query):
         """
         Hàm chính chạy vòng lặp ReAct xử lý câu hỏi của user có sử dụng Tools.
@@ -208,7 +209,7 @@ class ReActLibraryAgent:
             system_logger.error(f"Lỗi nghiêm trọng: {str(e)}", exc_info=True)
             tracer.finish(error=str(e))
             return "Đã xảy ra lỗi hệ thống nghiêm trọng."
-
+    
     def run(self, user_query):
         """
         Hàm chính chạy vòng lặp ReAct xử lý câu hỏi của user.

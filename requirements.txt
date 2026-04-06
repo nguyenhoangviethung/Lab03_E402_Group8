@@ -1,8 +1,4 @@
-openai>=1.0.0
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-requests>=2.31.0
-pytest>=7.4.0
+google-genai
+streamlit
 pandas
-pytz
-# llama-cpp-python>=0.2.0
+python-dotenv

@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import os
+from src.telemetry.logger import log_function_call
 
 # =====================================================================
 # --- CẤU HÌNH ĐƯỜNG DẪN DỮ LIỆU ---
@@ -16,7 +17,7 @@ BORROWINGS_PATH = os.path.join(
 # --- HÀM HỖ TRỢ (UTILITIES) ---
 # =====================================================================
 
-
+@log_function_call
 def parse_input(input_data) -> str:
     """
     Xử lý dữ liệu đầu vào. Nếu Agent truyền vào một dictionary (ví dụ: {'title': '...'}),
@@ -31,7 +32,7 @@ def parse_input(input_data) -> str:
 # --- DANH SÁCH CÁC CÔNG CỤ (TOOLS) ---
 # =====================================================================
 
-
+@log_function_call
 def get_popular_books(args) -> str:
     """TC1: Lấy danh sách 10 cuốn sách được mượn nhiều nhất."""
     try:
@@ -52,7 +53,7 @@ def get_popular_books(args) -> str:
     except Exception as e:
         return f"System Error: Lỗi lấy danh sách sách phổ biến - {str(e)}"
 
-
+@log_function_call
 def search_book_status(book_title) -> str:
     """TC2: Kiểm tra tình trạng sách (Còn hay hết)."""
     try:
@@ -80,7 +81,7 @@ def search_book_status(book_title) -> str:
     except Exception as e:
         return f"System Error: Lỗi tra cứu trạng thái sách - {str(e)}"
 
-
+@log_function_call
 def get_user_ledger(args) -> str:
     """TC3: Kiểm tra danh sách sách đang mượn của một sinh viên."""
     try:
@@ -107,7 +108,7 @@ def get_user_ledger(args) -> str:
     except Exception as e:
         return f"System Error: Lỗi tra cứu sổ mượn của sinh viên - {str(e)}"
 
-
+@log_function_call
 def get_book_content(book_title) -> str:
     """TC4: Lấy tóm tắt nội dung của sách."""
     try:
@@ -127,7 +128,7 @@ def get_book_content(book_title) -> str:
     except Exception as e:
         return f"System Error: Lỗi lấy nội dung sách - {str(e)}"
 
-
+@log_function_call
 def filter_by_author(author_name) -> str:
     """TC5: Thống kê và liệt kê các đầu sách của một tác giả."""
     try:
