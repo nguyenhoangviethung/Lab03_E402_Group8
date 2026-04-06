@@ -1,4 +1,4 @@
-# Báo cáo nhóm 08: Lab 3 - Tro ly quan ly thu vien
+# Báo cáo nhóm 08: Lab 3 - Trợ lý quản lý thư viện
 
 - **Tên nhóm**: LAP03-E402-08
 - **Thành viên**: 

@@ -145,3 +145,8 @@ Tuy nhiên, **complexity vs benefit là trade-off cần xem xét** tùy theo use
 - **Scalability**: Sử dụng real database như PostgreSQL với async queries.
 - **Safety**: Validate inputs trước khi query database.
 - **Performance**: Index database và cache queries.
+
+---
+
+> [!NOTE]
+> Submit this report by renaming it to `REPORT_[YOUR_NAME].md` and placing it in this folder.
