@@ -17,40 +17,37 @@ pip install -r requirements.txt
 
 ### 3. Directory Structure
 - `src/tools/`: Extension point for your custom tools.
-
-## 🏠 Running with Local Models (CPU)
-
-If you don't want to use OpenAI or Gemini, you can run open-source models (like Phi-3) directly on your CPU using `llama-cpp-python`.
-
-### 1. Download the Model
-Download the **Phi-3-mini-4k-instruct-q4.gguf** (approx 2.2GB) from Hugging Face:
-- [Phi-3-mini-4k-instruct-GGUF](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf)
-- Direct Download: [phi-3-mini-4k-instruct-q4.gguf](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/Phi-3-mini-4k-instruct-q4.gguf)
-
-### 2. Place Model in Project
-Create a `models/` folder in the root and move the downloaded `.gguf` file there.
-
-### 3. Update `.env`
-Change your `DEFAULT_PROVIDER` and set the path:
-```env
-DEFAULT_PROVIDER=local
-LOCAL_MODEL_PATH=./models/Phi-3-mini-4k-instruct-q4.gguf
-```
-
-## 🎯 Lab Objectives
-
-1.  **Baseline Chatbot**: Observe the limitations of a standard LLM when faced with multi-step reasoning.
-2.  **ReAct Loop**: Implement the `Thought-Action-Observation` cycle in `src/agent/agent.py`.
-3.  **Provider Switching**: Swap between OpenAI and Gemini seamlessly using the `LLMProvider` interface.
-4.  **Failure Analysis**: Use the structured logs in `logs/` to identify why the agent fails (hallucinations, parsing errors).
-5.  **Grading & Bonus**: Follow the [SCORING.md](file:///Users/tindt/personal/ai-thuc-chien/day03-lab-agent/SCORING.md) to maximize your points and explore bonus metrics.
-
-## 🛠️ How to Use This Baseline
-The code is designed as a **Production Prototype**. It includes:
-- **Telemetry**: Every action is logged in JSON format for later analysis.
-- **Robust Provider Pattern**: Easily extendable to any LLM API.
-- **Clean Skeletons**: Focus on the logic that matters—the agent's reasoning process.
+- `src/telemetry/`: Logging and metrics tracking.
+- `src/agent/`: Core ReAct loop logic.
+- `logs/`: Automatically generated traces and benchmark results.
 
 ---
 
-*Happy Coding! Let's build agents that actually work.*
+## 🖥️ Running the Interactive Dashboard (Streamlit)
+
+To interactively compare the Baseline LLM with the ReAct Agent, use the included Streamlit UI. 
+
+**Important:** Do *not* use `python app.py`. You must run it via the streamlit CLI:
+```bash
+streamlit run app.py
+```
+This will launch a local web server (usually at `http://localhost:8501`). The dashboard includes:
+- **Two Tabs:** Toggle between the ReAct Agent (Tools enabled) and Baseline Chatbot (No Tools).
+- **Latency & Step Tracking:** Visual badges showing execution time and reasoning steps.
+- **Quick Test Cases:** A sidebar with predefined prompts to instantly test Happy Paths, Negative Paths, and Out-of-Domain queries.
+
+---
+
+## 📊 Running Automated Benchmarks
+
+To systematically evaluate the performance, hallucination rate, and token usage across multiple test cases without manual clicking, run the automated benchmark script:
+
+```bash
+python benchmark.py
+```
+
+**What this does:**
+1. Executes a suite of 12 robust test cases (including out-of-domain queries like math and weather, and negative paths like requesting non-existent books).
+2. Clears the context history between each query to ensure zero-shot accuracy.
+3. Prints a clean comparative table in your terminal showing Latency and Steps.
+4. Appends rich telemetry data (Tokens used, completion status, tools invoked) to `logs/benchmark_results.json`.
