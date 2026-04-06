@@ -1,8 +1,13 @@
 # Group Report: Lab 3 - Production-Grade Agentic System
 
-- **Team Name**: [Name]
-- **Team Members**: [Member 1, Member 2, ...]
-- **Deployment Date**: [YYYY-MM-DD]
+- **Team Name**: [NameLAP03-E402-08]
+- **Team Members**: [Hoàng Đức Hưng: 2A202600370,
+Mai Việt Hoàng 2A202600476,
+Lê Hồng Anh 2A202600096,
+Nguyễn Thị Hương Giang 2A202600485,
+Nguyễn Thanh Bình 2A202600484,
+Nguyễn Hoàng Việt Hùng 2A202600164]
+- **Deployment Date**: [2026-06-03]
 
 ---
 
